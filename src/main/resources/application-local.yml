@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: ai-customer-service
+  ai:
+    dashscope:
+      api-key: sk-87ccbdca10cf472fbce44692db035e63
+      chat:
+        options:
+          model: qwen3-max
+
