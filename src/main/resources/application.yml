@@ -9,17 +9,18 @@ spring:
       chat:
         options:
           model: qwen-plus
-#    ollama:                                ???????????????
-#      base-url: http://localhost:11434
-#      chat:
-#        model: gemma3:1b
+    ollama:
+      chat:
+        enabled: false
+      embedding:
+        enabled: false
 
 
 server:
   port: 8123
   servlet:
     context-path: /api
-# springdoc-openapi ??????
+# springdoc-openapi
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

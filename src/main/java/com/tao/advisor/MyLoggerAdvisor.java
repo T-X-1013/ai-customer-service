@@ -29,12 +29,14 @@ public class MyLoggerAdvisor implements CallAdvisor, StreamAdvisor {
     }
 
     private ChatClientRequest before(ChatClientRequest request) {
-        log.info("AI Request: {}", request.prompt());
+        // 暂时先把日志打印给关掉,不然日志里面的信息有太多重复的了
+//        log.info("AI Request: {}", request.prompt());
         return request;
     }
 
     private void observeAfter(ChatClientResponse chatClientResponse) {
-        log.info("AI Response: {}", chatClientResponse.chatResponse().getResult().getOutput().getText());
+        // 暂时先把日志打印给关掉,不然日志里面的信息有太多重复的了
+//        log.info("AI Response: {}", chatClientResponse.chatResponse().getResult().getOutput().getText());
     }
 
     @Override
