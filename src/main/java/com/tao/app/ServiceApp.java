@@ -3,6 +3,7 @@ package com.tao.app;
 
 import com.tao.advisor.MyLoggerAdvisor;
 import com.tao.chatmemory.FileBasedChatMemory;
+import com.tao.tools.ObjectionExtractTool;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +25,9 @@ public class ServiceApp {
 
     @Resource
     private VectorStore serviceAppVectorStore;
+
+    @Resource
+    private ObjectionExtractTool objectionExtractTool;
 
     private static final String SYSTEM_PROMPT = "你是一个客服分析智能体";
 
@@ -115,5 +119,18 @@ public class ServiceApp {
         return content;
     }
 
+    /**
+     * AI RAG 检索增强对话, 输入端只有 info，调用工具提取出 problem
+     * 使用向量数据库 (VectorStore) 进行知识召回
+     * @param info     客服与客户对话文本
+     * @return 模型输出（包含分类编号与名称）
+     */
+    public String doChatWithRag(String info) {
+        // 1. 用工具类从对话文本中抽取客户异议 problem（JSON 数组字符串）
+        String problem = objectionExtractTool.extractProblems(info);
+        log.info("自动抽取到的 problem: {}", problem);
 
+        // 2. 复用原有 RAG 方法完成分类逻辑
+        return doChatWithRag(info, problem);
+    }
 }
