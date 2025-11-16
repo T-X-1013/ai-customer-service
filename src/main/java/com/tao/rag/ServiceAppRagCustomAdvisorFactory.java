@@ -26,8 +26,8 @@ public class ServiceAppRagCustomAdvisorFactory {
 
         DocumentRetriever documentRetriever = VectorStoreDocumentRetriever.builder()
                 .vectorStore(vectorStore)
-                .similarityThreshold(0.1) // 相似度阈值
-                .topK(8) // 返回文档数量
+                .similarityThreshold(0.4) // 相似度阈值
+                .topK(5) // 返回文档数量
                 .build();
         return RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(documentRetriever)

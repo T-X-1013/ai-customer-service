@@ -30,11 +30,12 @@ public class ServiceAppVectorStoreConfig {
     private static final String STORE_PATH =
             System.getProperty("user.dir") + "/src/main/resources/vectorstoreJson/embeddings.json";
 
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Resource
     private ServiceAppDocumentLoader serviceAppDocumentLoader;
-    
+
 //    @Bean
 //    VectorStore serviceAppVectorStore(EmbeddingModel dashscopeEmbeddingModel) {
 //        SimpleVectorStore simpleVectorStore = SimpleVectorStore.builder(dashscopeEmbeddingModel)
@@ -76,3 +77,7 @@ public class ServiceAppVectorStoreConfig {
         return simpleVectorStore;
     }
 }
+
+
+
+
