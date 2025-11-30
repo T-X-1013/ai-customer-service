@@ -89,4 +89,50 @@ public class ProblemClassifyTool {
             return "[]";
         }
     }
+
+
+      /**
+       * 清洗模型输出：去掉 ``` 包裹、XML/HTML 标签，并截断到首个 { 或 [
+      */
+      private String cleanResult(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String cleaned = raw.trim();
+        // 去掉 ``` 包裹
+        if (cleaned.startsWith("```")) {
+            int firstLineBreak = cleaned.indexOf('\n');
+            if (firstLineBreak > 0) {
+                cleaned = cleaned.substring(firstLineBreak + 1);
+            }
+            if (cleaned.endsWith("```")) {
+                 cleaned = cleaned.substring(0, cleaned.length() - 3);
+            }
+            cleaned = cleaned.trim();
+        }
+        // 去掉 <...> 标签（如 <think>、HTML 等）
+        if (cleaned.contains("<") && cleaned.contains(">")) {
+            cleaned = cleaned.replaceAll("<[^>]+>", "").trim();
+        }
+        // 只保留从首个 { 或 [ 开始的部分
+        int brace = cleaned.indexOf('{');
+        int bracket = cleaned.indexOf('[');
+        int start = -1;
+        if (brace >= 0 && bracket >= 0) {
+            start = Math.min(brace, bracket);
+        } else if (brace >= 0) {
+            start = brace;
+        } else if (bracket >= 0) {
+            start = bracket;
+        }
+        if (start > 0) {
+            cleaned = cleaned.substring(start).trim();
+        }
+         // 非 JSON 开头直接判空
+        if (!(cleaned.startsWith("{") || cleaned.startsWith("["))) {
+             return null;
+        }
+        return cleaned;
+      }
+
 }
