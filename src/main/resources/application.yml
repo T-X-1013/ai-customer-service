@@ -43,3 +43,7 @@ knife4j:
   setting:
     language: zh_cn
 
+logging:
+  charset:
+    console: UTF-8
+

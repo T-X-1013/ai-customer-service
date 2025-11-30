@@ -7,8 +7,9 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Component;
 
+// 暂时用不到，先注释掉，减少与大模型交互的次数
 // 取消注释即可在 SpringBoot 项目启动时执行
-@Component
+// @Component
 public class OllamaAiInvoke implements CommandLineRunner {
 
     @Resource
