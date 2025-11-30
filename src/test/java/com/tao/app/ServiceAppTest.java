@@ -91,6 +91,7 @@ class ServiceAppTest {
     /**
      * 测试 RAG 效果
      * 接收的输入参数只有 info
+     * 一次性把整段 info 和 problem 送给模型，让模型同时给所有问题分配大类/小类
      */
     @Test
     void doChatWithRag2() {
@@ -127,6 +128,7 @@ class ServiceAppTest {
 
     /**
      * 测试新版 RAG：
+     * 对每个 problem 单独调用 classifySingleProblemWithRag 做 RAG 分类，再由 ProblemClassifyTool 合并结果
      * 只传入 info，内部自动：
      * 1）用 ObjectionExtractTool 抽取 problem
      * 2）用 ProblemClassifyTool + RAG 做分类
