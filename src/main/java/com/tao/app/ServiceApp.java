@@ -109,6 +109,8 @@ public class ServiceApp {
             你的任务是根据对话内容（<info></info>）和客户问题（<problem></problem>），
             结合客服异议分类知识（<context></context>），输出每个问题对应的大类和小类编号与名称。
             
+            输出要求
+            
             <info>%s</info>
             <problem>%s</problem>
             
@@ -215,6 +217,7 @@ public class ServiceApp {
                 3. 若无异议则输出空数组 [];
                 4. 若无匹配项则输出大类编号 "00"、大类名称 "新分类"；
                 5. 严禁输出任何多余文字或解释。
+                6. 严禁输出思考/推理过程或 <think> 等标签，只能输出纯 JSON。 
                 """, info, oneProblemJson);
 
         var ragAdvisor = ServiceAppRagCustomAdvisorFactory
