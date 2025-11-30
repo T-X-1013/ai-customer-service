@@ -30,7 +30,7 @@ class MyDocumentEnricher {
 
     private final ChatModel chatModel;
 
-    MyDocumentEnricher(@Qualifier("dashscopeChatModel")ChatModel chatModel) {
+    MyDocumentEnricher(@Qualifier("ollamaChatModel") ChatModel chatModel) {
         this.chatModel = chatModel;
     }
       

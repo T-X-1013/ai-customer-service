@@ -4,16 +4,21 @@ spring:
   profiles:
     active: local
   ai:
-    dashscope:
-      api-key: ${secret.dashscope.api-key:}
+    ollama:
+      # 如果就是本机跑 Ollama，可以不写，默认也是这个
+      base-url: http://localhost:11434
+      embedding:
+        options:
+          model: modelscope.cn/Qwen/Qwen3-Embedding-8B-GGUF:latest
+
       chat:
         options:
-          model: qwen-plus
-    ollama:
-      chat:
-        enabled: false
-      embedding:
-        enabled: false
+          model: qwen3:8b
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ai_customer_service
+    username: postgres
+    password: root
+    driver-class-name: org.postgresql.Driver
 
 
 server:
@@ -32,7 +37,7 @@ springdoc:
     - group: 'default'
       paths-to-match: '/**'
       packages-to-scan: com.tao.controller
-# knife4j???????????????
+
 knife4j:
   enable: true
   setting:

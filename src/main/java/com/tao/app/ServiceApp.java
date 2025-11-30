@@ -11,11 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
@@ -26,7 +26,9 @@ public class ServiceApp {
     private final ChatClient chatClient;
 
 
-    /** 专用于“单问题 RAG 分类”的轻量客户端（无默认 system、无记忆） */
+    /**
+     * 专用于“单问题 RAG 分类”的轻量客户端（无默认 system、无记忆）
+     */
     private final ChatClient classifyChatClient;
 
     @Resource
@@ -40,11 +42,11 @@ public class ServiceApp {
 
     private static final String SYSTEM_PROMPT = "你是一个客服分析智能体";
 
-    public ServiceApp(ChatModel dashscopeChatModel) {
+    public ServiceApp(@Qualifier("ollamaChatModel") ChatModel chatModel)  {
         // 初始化基于文件的对话记忆
         String fileDir = System.getProperty("user.dir") + "/tmp/chat-memory";
         ChatMemory chatMemory = new FileBasedChatMemory(fileDir);
-        chatClient = ChatClient.builder(dashscopeChatModel)
+        chatClient = ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
@@ -55,7 +57,7 @@ public class ServiceApp {
                 )
                 .build();
 
-        classifyChatClient = ChatClient.builder(dashscopeChatModel)
+        classifyChatClient = ChatClient.builder(chatModel)
                 .build();
     }
 

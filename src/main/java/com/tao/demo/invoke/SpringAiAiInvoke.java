@@ -7,7 +7,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-
+// 已弃用，后续所有的代码都依靠本地部署的大模型实现，不再调用外部的api了，这段代码可以忽略！！！！！！
 // 取消注释即可在 SpringBoot 项目启动时执行
 //@Component
 public class SpringAiAiInvoke implements CommandLineRunner {

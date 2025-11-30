@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
@@ -48,8 +49,8 @@ public class ObjectionExtractTool {
         5、严禁使用 ```json 或任何 Markdown 代码块包裹输出，不能输出解释性文字，只能输出纯 JSON。
         """;
 
-    public ObjectionExtractTool(ChatModel dashscopeChatModel) {
-        this.chatClient = ChatClient.builder(dashscopeChatModel)
+    public ObjectionExtractTool(@Qualifier("ollamaChatModel") ChatModel chatModel) {
+        this.chatClient = ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
                 .build();
     }
@@ -96,6 +97,3 @@ public class ObjectionExtractTool {
         return raw;
     }
 }
-
-// todo
-// 后续如果用本地模型跑，可以使用 deepseek 满血版去跑
