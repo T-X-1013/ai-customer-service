@@ -14,6 +14,23 @@ import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
  */
 @Slf4j
 public class ServiceAppRagCustomAdvisorFactory {
+    private static final int TOP_K = 3;            // 或 3，按你想要的固定值
+    private static final double THRESHOLD = 0.4;   // 相似度阈值
+
+    public static Advisor createLoveAppRagCustomAdvisor(VectorStore vectorStore) {
+        return createLoveAppRagCustomAdvisor(vectorStore, THRESHOLD, TOP_K);
+    }
+
+    public static Advisor createLoveAppRagCustomAdvisor(VectorStore vectorStore, double threshold, int topK) {
+        DocumentRetriever documentRetriever = VectorStoreDocumentRetriever.builder()
+                .vectorStore(vectorStore)
+                .similarityThreshold(threshold)
+                .topK(topK)
+                .build();
+        return RetrievalAugmentationAdvisor.builder()
+                .documentRetriever(documentRetriever)
+                .build();
+    }
 
     /**
      * 创建自定义的 RAG 检索增强顾问
@@ -26,12 +43,14 @@ public class ServiceAppRagCustomAdvisorFactory {
 
         DocumentRetriever documentRetriever = VectorStoreDocumentRetriever.builder()
                 .vectorStore(vectorStore)
-                .similarityThreshold(0.4) // 相似度阈值
-                .topK(5) // 返回文档数量
+                .similarityThreshold(THRESHOLD) // 相似度阈值
+                .topK(TOP_K) // 返回文档数量
                 .build();
         return RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(documentRetriever)
 //                .queryAugmenter(ServiceAppContextualQueryAugmenterFactory.createInstance())
                 .build();
     }
+
+
 }
