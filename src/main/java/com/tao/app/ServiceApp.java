@@ -18,6 +18,8 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import org.springframework.ai.ollama.api.OllamaOptions;
+
 
 @Component
 @Slf4j
@@ -42,12 +44,21 @@ public class ServiceApp {
 
     private static final String SYSTEM_PROMPT = "你是一个客服分析智能体";
 
+    // 公用一个确定性配置
+    private static final OllamaOptions DETERMINISTIC_OPTIONS = OllamaOptions.builder()
+            .temperature(0.0) // 关闭随机性
+            .topP(1.0)        // 只取最高概率
+            .build();
+
     public ServiceApp(@Qualifier("ollamaChatModel") ChatModel chatModel)  {
         // 初始化基于文件的对话记忆
         String fileDir = System.getProperty("user.dir") + "/tmp/chat-memory";
         ChatMemory chatMemory = new FileBasedChatMemory(fileDir);
         chatClient = ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
+                //新增关闭随机性25.12.3
+                .defaultOptions(DETERMINISTIC_OPTIONS)
+
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         // 自定义日志 Advisor，可按需开启
@@ -58,6 +69,7 @@ public class ServiceApp {
                 .build();
 
         classifyChatClient = ChatClient.builder(chatModel)
+                .defaultOptions(DETERMINISTIC_OPTIONS)
                 .build();
     }
 
@@ -106,8 +118,7 @@ public class ServiceApp {
         // 构造提示词
         String prompt = String.format("""
             你是一个电信公司的客服总管，你将对一段客服与客户对话录音进行分析。
-            你的主要任务是：根据对话内容，以及已经分析好的客户在对话中提出的问题，使用你掌握的“客户异议分类”知识，对该问题进行精准归类，精准输出每个问题对应的大类和小类编号与名称。
-        
+            你的主要任务是：根据对话内容，以及已经分析好的客户在对话中提出的问题，使用你掌握的“客户异议分类”知识，对该问题进行精准归类，精准输出每个问题对应的大类和小类编号与名称并从 <info> 中寻找与该问题对应的客服回答。
             其中：
             - 对话文本放在 <info></info> 标签中；
             - 客户已分析好的问题放在 <problem></problem> 标签中；
@@ -130,6 +141,7 @@ public class ServiceApp {
                 "问题大类名称": "",
                 "问题小类编号": "",
                 "问题小类名称": "",
+                "客服回答": "",  // 从 <info> 中找到对该问题的客服回复，找不到就留空
                 "原文摘要": "",
                 "解释": ""
               }
@@ -137,25 +149,13 @@ public class ServiceApp {
            
             输出规则：
             1. “针对的问题”需与输入问题完全一致；
-            2. 分类编号和名称必须与知识库保持一致，直接复制知识库里的原文，不能截断或改写，尤其不要省略冒号后的说明；
+            2. 大类/小类编号与名称必须和知识库保持一致，直接复制知识库里的原文，不能截断或改写，尤其不要省略冒号后的说明；
             3. 若无异议则输出空数组 [];
             4. 若无匹配项则输出大类编号 "00"、大类名称 "新分类"；
-            5. 严禁输出任何多余文字或解释。
-            6. 严禁输出思考/推理过程或 <think> 等标签，只能输出纯 JSON。         
+            5. 严禁输出任何多余文字或解释、严禁输出思考/推理过程或 <think> 等标签，只能输出纯 JSON。  
+            6. 从 <info> 中寻找与该问题对应的客服回复，尽量原样复制；找不到则填空字符串，严禁编造；
           
             """, info, problem);
-
-//        你是一个电信公司的客服总管，你将对一段客服与客户对话录音进行分析。
-//        你的任务是根据对话内容（<info></info>）和客户问题（<problem></problem>），
-//        结合客服异议分类知识（<context></context>），输出每个问题对应的大类和小类编号与名称。
-//
-//        输出要求
-//
-//                <info>%s</info>
-//            <problem>%s</problem>
-//
-//                输出格式如下：
-//            [{"针对的问题": "", "问题大类编号": "", "问题大类名称": "", "问题小类编号": "", "问题小类名称": "", "原文摘要": "", "解释": ""}]
 
         // 使用 RAG Advisor（检索增强）
         var ragAdvisor = com.tao.rag.ServiceAppRagCustomAdvisorFactory
@@ -219,45 +219,45 @@ public class ServiceApp {
      */
     private String classifySingleProblemWithRag(String info, String oneProblemJson) {
         String prompt = String.format("""
-                你是一个电信公司的客服总管，你将对一段客服与客户对话录音进行分析。
-                你的主要任务是：根据对话内容，以及已经分析好的客户在对话中提出的问题，
-                使用你掌握的“客户异议分类”知识，对该问题进行精准归类，精准输出每个问题对应的大类和小类编号与名称。
-
-                其中：
-                - 对话文本放在 <info></info> 标签中；
-                - 客户已分析好的问题放在 <problem></problem> 标签中；
-                - 客户异议分类知识会通过 RAG 检索注入到对话中。
-
-                <info>
-                %s
-                </info>
-
-                <problem>
-                %s
-                </problem>
-
-                输出要求：
-                1）输出格式必须是一个 JSON 数组，例如：
-                [
-                  {
-                    "针对的问题": "",
-                    "问题大类编号": "",
-                    "问题大类名称": "",
-                    "问题小类编号": "",
-                    "问题小类名称": "",
-                    "原文摘要": "",
-                    "解释": ""
-                  }
-                ]
-                
-                输出规则：
-                1. “针对的问题”需与输入问题完全一致；
-                2. 分类编号和名称必须与知识库保持一致，直接复制知识库里的原文，不能截断或改写，尤其不要省略冒号后的说明；
-                3. 若无异议则输出空数组 [];
-                4. 若无匹配项则输出大类编号 "00"、大类名称 "新分类"；
-                5. 严禁输出任何多余文字或解释。
-                6. 严禁输出思考/推理过程或 <think> 等标签，只能输出纯 JSON。 
-                """, info, oneProblemJson);
+            你是一个电信公司的客服总管，你将对一段客服与客户对话录音进行分析。
+            你的主要任务是：根据对话内容，以及已经分析好的客户在对话中提出的问题，使用你掌握的“客户异议分类”知识，对该问题进行精准归类，精准输出每个问题对应的大类和小类编号与名称并从 <info> 中寻找与该问题对应的客服回答。
+            
+            其中：
+            - 对话文本放在 <info></info> 标签中；
+            - 客户已分析好的问题放在 <problem></problem> 标签中；
+            - 客户异议分类知识会通过 RAG 检索注入到对话中。
+        
+            <info>
+            %s
+            </info>
+        
+            <problem>
+            %s
+            </problem>
+        
+            输出要求：
+            1）输出格式必须是一个 JSON 数组，例如：
+            [
+              {
+                "针对的问题": "",
+                "问题大类编号": "",
+                "问题大类名称": "",
+                "问题小类编号": "",
+                "问题小类名称": "",
+                "客服回答": "",  // 从 <info> 中找到对该问题的客服回复，找不到就留空
+                "原文摘要": "",
+                "解释": ""
+              }
+            ]
+           
+            输出规则：
+            1. “针对的问题”需与输入问题完全一致；
+            2. 大类/小类编号与名称必须和知识库保持一致，直接复制知识库里的原文，不能截断或改写，尤其不要省略冒号后的说明；
+            3. 若无异议则输出空数组 [];
+            4. 若无匹配项则输出大类编号 "00"、大类名称 "新分类"；
+            5. 严禁输出任何多余文字或解释、严禁输出思考/推理过程或 <think> 等标签，只能输出纯 JSON。  
+            6. 从 <info> 中寻找与该问题对应的客服回复，尽量原样复制；找不到则填空字符串，严禁编造；
+            """, info, oneProblemJson);
 
         var ragAdvisor = ServiceAppRagCustomAdvisorFactory
                 .createLoveAppRagCustomAdvisor(serviceAppVectorStore, "active");

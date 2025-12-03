@@ -149,20 +149,5 @@ public class ObjectionExtractTool {
 
     }
 }
-//        try {
-//            JsonNode root = objectMapper.readTree(raw);
-//            JsonNode listNode = root.get("异议列表");
-//            if (listNode != null && listNode.isArray()) {
-//                String result = objectMapper.writeValueAsString(listNode);
-//                log.info("解析后的异议列表: {}", result);
-//                return result;
-//            }
-//        } catch (Exception e) {
-//            log.warn("解析“异议列表”失败，直接返回原始内容", e);
-//        }
-//
-//        // 如果解析失败，就把大模型输出的原始结果直接返回
-//        return raw;
-//    }
-//}
+
 
