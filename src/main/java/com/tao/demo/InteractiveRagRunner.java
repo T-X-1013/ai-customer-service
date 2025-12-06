@@ -11,7 +11,7 @@ import java.util.Scanner;
  * 实现多次输入 info 输出分类
  * 输入 quit 退出
  * 开启终端
- * 在项目根目录输入： \mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=interactive-rag"
+ * 在项目根目录输入： .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=interactive-rag"
  */
 @Component
 @Profile("interactive-rag") // 仅在该 profile 下启用，避免默认启动卡在交互
