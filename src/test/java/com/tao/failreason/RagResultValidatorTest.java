@@ -65,12 +65,30 @@ class RagResultValidatorTest {
             客户：再见。
         """;
 
-        // 测试isValidRagResult方法
-        boolean result = ragResultValidator.isValidRagResult(info);
-        System.out.println("=== RagResultValidator 测试输出 ===");
-        System.out.println("isValidRagResult: " + result);
+        try {
+            // 调用serviceApp的doClassifyWithRag方法获取原始RAG结果
+            String ragResult = serviceApp.doClassifyWithRag(info);
+            System.out.println("=== RAG原始结果 ===");
+            System.out.println(ragResult);
 
-        // 由于实际的RAG结果可能会有所不同，这里只断言返回值是boolean类型
-        Assertions.assertTrue(result || !result);
+            // 使用ObjectMapper解析JSON字符串为List<Map<String, Object>>
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.List<java.util.Map<String, Object>> resultList = objectMapper.readValue(
+                    ragResult,
+                    new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
+            );
+
+            // 遍历数组，对每个对象调用isValidRagObject方法
+            System.out.println("\n=== 每个对象的有效性验证结果 ===");
+            for (int i = 0; i < resultList.size(); i++) {
+                java.util.Map<String, Object> ragObject = resultList.get(i);
+                boolean isValid = ragResultValidator.isValidRagObject(ragObject);
+                System.out.println("对象 " + (i + 1) + " 是否有效: " + isValid);
+                System.out.println("对象内容: " + ragObject);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assertions.fail("测试过程中发生异常: " + e.getMessage());
+        }
     }
 }
