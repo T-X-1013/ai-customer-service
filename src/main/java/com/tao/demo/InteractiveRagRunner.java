@@ -11,10 +11,17 @@ import java.util.Scanner;
  * 实现多次输入 info 输出分类
  * 输入 quit 退出
  * 开启终端
- * 在项目根目录输入： .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=interactive-rag"
+ * 在项目根目录输入： Y
+ *
+ */
+
+/**
+ * 稳定版 Interactive RAG Runner：
+ * 1. 保留所有原始格式（不 trim、不删除多余空格、不改换行）
+ * 2. 输入严格等价于 JUnit 的 text block
  */
 @Component
-@Profile("interactive-rag") // 仅在该 profile 下启用，避免默认启动卡在交互
+@Profile("interactive-rag")
 public class InteractiveRagRunner implements CommandLineRunner {
 
     private final ServiceApp serviceApp;
@@ -27,37 +34,51 @@ public class InteractiveRagRunner implements CommandLineRunner {
     public void run(String... args) {
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
-                System.out.println("粘贴多行对话后再按回车、再空一行发送；输入 quit 退出：");
+                System.out.println("粘贴多行对话，空行结束；输入 quit 退出：");
+
                 StringBuilder buf = new StringBuilder();
+
                 while (true) {
                     if (!scanner.hasNextLine()) {
                         return;
                     }
                     String line = scanner.nextLine();
+
                     if ("quit".equalsIgnoreCase(line.trim())) {
                         System.out.println("已退出。");
                         return;
                     }
-                    if (line.isBlank()) { // 空行表示一段输入结束，开始调用模型
+
+                    // 空行表示结尾
+                    if (line.isEmpty()) {
                         break;
                     }
-                    buf.append(line).append('\n'); // 保留换行
+
+                    buf.append(line).append("\n");
                 }
-                String message = buf.toString().trim();
-                if (message.isEmpty()) {
+
+                // 不 trim，保留格式
+                String message = buf.toString();
+
+                // 空输入跳过
+                if (message.replace("\n", "").trim().isEmpty()) {
                     continue;
                 }
-                System.out.println("===  模型开始处理，请耐心等待  ===");
 
-                long start = System.currentTimeMillis(); // 开始时间
+                System.out.println("=== 模型开始处理，请等待 ===");
+
+                long start = System.currentTimeMillis();
+
                 String result = serviceApp.doClassifyWithRag(message);
-                double costSeconds = (System.currentTimeMillis() - start) / 1000.0;   // 总耗时
+
+                double costSeconds = (System.currentTimeMillis() - start) / 1000.0;
 
                 System.out.println("=== 模型输出 ===");
                 System.out.println(result);
-                System.out.println("=== 完成，总耗时: " + costSeconds + " ms ===");
 
+                System.out.println("=== 完成，总耗时: " + costSeconds + " 秒 ===");
             }
         }
     }
 }
+

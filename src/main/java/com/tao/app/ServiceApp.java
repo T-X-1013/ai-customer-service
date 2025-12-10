@@ -31,6 +31,7 @@ public class ServiceApp {
      */
     private final ChatClient classifyChatClient;
 
+
     @Resource
     private VectorStore serviceAppVectorStore;
 
@@ -40,25 +41,12 @@ public class ServiceApp {
     @Resource
     private ProblemClassifyTool problemClassifyTool;
 
-    private static final String SYSTEM_PROMPT = "你是一个客服分析智能体";
 
-    public ServiceApp(@Qualifier("ollamaChatModel") ChatModel chatModel)  {
-        // 初始化基于文件的对话记忆
-        String fileDir = System.getProperty("user.dir") + "/tmp/chat-memory";
-        ChatMemory chatMemory = new FileBasedChatMemory(fileDir);
-        chatClient = ChatClient.builder(chatModel)
-                .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
-                        // 自定义日志 Advisor，可按需开启
-                        new MyLoggerAdvisor()
-//                        // 自定义推理增强 Advisor，会增加token消耗，可按需开启，暂时用不到哈
-//                       ,new ReReadingAdvisor()
-                )
-                .build();
-
-        classifyChatClient = ChatClient.builder(chatModel)
-                .build();
+    // 构造函数改为注入 Bean
+    public ServiceApp(ChatClient chatClient,
+                      @Qualifier("classifyChatClient") ChatClient classifyChatClient) {
+        this.chatClient = chatClient;
+        this.classifyChatClient = classifyChatClient;
     }
 
     /**
@@ -262,3 +250,5 @@ public class ServiceApp {
         return content;
     }
 }
+
+
