@@ -1,10 +1,14 @@
 package com.tao.invalid;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tao.rag.RagFullProcessService;
+import com.tao.tools.InvalidAnswerValidatorTool;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -16,11 +20,16 @@ class ResultValidatorTest {
     @Resource
     private RagFullProcessService fullProcessService;
 
+    @Resource
+    private JdbcTemplate jdbcTemplate;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Test
     void testRagFullProcess() {
-        // 测试输入对话内容
+
         String info = """
-            客服：您好，请问是13172306204的机主吗？
+              客服：您好，请问是13172306204的机主吗？
             客户：啊，是。
             客服：感谢您的接听。这边是广州联通给您来电的，就是留意到您的号码是24年十月份入网的嘛，想让您这个卡长期使用保留下来多多支持联通的那今晚八点之后呢，会帮您做1个网络提速，您还是按您这个司机全国流量到29的卡来用不调整月费的，您放心。另外呢还可以体验1个每月多交20元活动发信用消费。按照您这个卡29的这个4G全国流量网缴费就可以，每个月还可以体验1个一百五十分钟通话和五个G流量。这样您所有资源呢就可以使用5G啦，就是您这个4G全国流量完升级成5G全国流量。哇，而且二29的这个卡利用就可以。
             客服：这样您这两天有空的话，把手机呢关机重启1下，网络，帮您更新好办理好呢，到时候留意使用就可以了，好吧。
@@ -64,28 +73,79 @@ class ResultValidatorTest {
             客服：这样就不打扰您了，生活愉快再见。
             客户：那再见。
             客户：再见。
-        """;
+                """;
 
-        log.info("=== 测试开始：RagFullProcessService ===");
-        log.info("输入对话信息长度: {}", info.length());
+        log.info("=== 测试开始：RagFullProcessService（最终版） ===");
 
         try {
-            // 调用 RagFullProcessService 完整处理流程
-            List<Map<String, Object>> processedList = fullProcessService.processInfo(info);
+            // === 1. 调用完整流程 ===
+            String resultJson = fullProcessService.processInfo(info);
+            log.info("=== 最终 JSON 输出 ===\n{}", resultJson);
 
-            if (processedList == null || processedList.isEmpty()) {
-                log.warn("处理结果为空！");
-            } else {
-                log.info("=== 处理后的 RAG 对象列表 ===");
-                for (int i = 0; i < processedList.size(); i++) {
-                    Map<String, Object> obj = processedList.get(i);
-                    log.info("对象 {}: {}", i + 1, obj);
+            JsonNode root = objectMapper.readTree(resultJson);
+
+            // === 2.打印每条对象的有效性 ===
+            if (root.isArray()) {
+                for (int i = 0; i < root.size(); i++) {
+                    JsonNode obj = root.get(i);
+
+                    log.info("""
+                            ---- 记录 {} ----
+                            针对的问题: {}
+                            客服回答: {}
+                            是否有效: {}
+                            判断原因: {}
+                            原文摘要: {}
+                            解释: {}
+                            --------------------------
+                            """,
+                            i + 1,
+                            obj.path("针对的问题").asText(""),
+                            obj.path("客服回答").asText(""),
+                            obj.path("判断回答是否有效").asText(""),
+                            obj.path("判断原因").asText(""),
+                            obj.path("原文摘要").asText(""),
+                            obj.path("解释").asText("")
+                    );
                 }
+            } else {
+                log.warn("输出不是数组，可能为空");
+            }
+
+            // === 3. 查询 failed_cases ===
+            String sql = """
+                    SELECT id, problem, answer, reason, rag_object, created_at
+                    FROM failed_cases
+                    WHERE info = ?
+                    ORDER BY id DESC
+                    """;
+
+            List<Map<String, Object>> failedRecords = jdbcTemplate.queryForList(sql, info);
+
+            log.info("=== failed_cases 记录数: {} ===", failedRecords.size());
+
+            for (Map<String, Object> r : failedRecords) {
+                log.info("""
+                        ---- 数据库无效案例 ----
+                        id          = {}
+                        problem     = {}
+                        answer      = {}
+                        reason      = {}
+                        rag_object  = {}
+                        created_at  = {}
+                        """,
+                        r.get("id"),
+                        r.get("problem"),
+                        r.get("answer"),
+                        r.get("reason"),
+                        r.get("rag_object"),
+                        r.get("created_at")
+                );
             }
 
         } catch (Exception e) {
-            log.error("测试过程中发生异常！", e);
-            throw new RuntimeException("测试过程中发生异常: " + e.getMessage(), e);
+            log.error("测试异常", e);
+            throw new RuntimeException(e);
         }
 
         log.info("=== 测试完成 ===");

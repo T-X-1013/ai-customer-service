@@ -1,10 +1,10 @@
 package com.tao.rag;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
@@ -14,36 +14,55 @@ public class RagAnswerValidatorAgent {
     @Qualifier("validatorChatClient")
     private final ChatClient validatorChatClient;
 
-    /** 判断客服回答是否有效 */
-    public boolean isAnswerValid(String problem, String answer) {
-        String prompt = """
-           你是一个电信公司的客服总管，你已经对一段客服与客户对话录音进行分析。
-           你的主要任务是：根据对话内容，以及已经分析好的客户在对话中提出的问题和客服回答来判断客服回答是否准确回应用户提出的问题。
-                   
-            用户问题：%s
-            客服回答：%s
+    /**
+     * 调用 Validator LLM 判断客服回答有效性（强制 JSON 严格输出）
+     */
+    public String validateAnswerWithRagResult(String ragResultJson, String problem, String answer) {
+
+        String prompt = String.format("""
+            你是一个电信公司的客服总管。你将根据 RAG 输出对客服回答进行有效性判断。
             
-            判断规则：
-            1. 客服回答与用户提出的问题相关，则判断回答有效；
-            2. 如果客服回答与用户提出的问题无关，或者信息不完整、错误，则判断回答无效；
-            3. 不允许模型生成额外解释或文字，只能返回 JSON。
+            =======================
+            【 RAG 输出（仅一条）】
+            %s
+            =======================
+
+            【用户问题】
+            %s
             
-            输出要求：
-            1）输出格式必须是一个 JSON 数组，例如：
+            【客服回答】
+            %s
+            =======================
+
+            你的任务：
+            1. 判断客服回答是否真正回应了用户问题。若相关则判断有效；不相关则判断无效。
+            2. 给出简洁且唯一的判断原因。
+            3. 所有字段必须齐全，字段内容不能缺失。
+            4. “问题大类编号 / 名称 / 小类编号 / 名称 / 原文摘要 / 解释”
+               必须完整从 RAG 输入复制（不得修改）。
+            5. “针对的问题”必须与传入的用户问题完全一致。
+            6. 严禁出现任何除 JSON 外的内容（不能出现解释、前后缀、格式说明等）。
+
+            =======================
+            【严格输出格式，必须是 JSON 数组】
             [
-                {
-                  "针对的问题": "...",
-                  "客服回答": "...",
-                  "判断回答是否有效": "是/否",
-                  "判断原因": "",
-                }
+              {
+                "针对的问题": "",
+                "问题大类编号": "",
+                "问题大类名称": "",
+                "问题小类编号": "",
+                "问题小类名称": "",
+                "客服回答": "",
+                "判断回答是否有效": "",  // 是 或 否
+                "判断原因": "",
+                "原文摘要": "",
+                "解释": ""
+              }
             ]
-            输出规则：
-            1. “针对的问题”需与输入问题完全一致；
-            2. 严禁输出任何多余文字或解释、严禁输出思考/推理过程或 <think> 等标签，只能输出纯 JSON；  
-            3. “判断回答是否有效”只能输入是或否；
-            4. "判断原因"根据判断客服回答是否准确回应用户提出的问题来判断是否有效
-        """.formatted(problem, answer);
+            =======================
+
+            绝对禁止输出注释、额外说明、自然语言，只能输出纯 JSON。
+            """, ragResultJson, problem, answer);
 
         String resultText = validatorChatClient.prompt()
                 .user(prompt)
@@ -54,7 +73,7 @@ public class RagAnswerValidatorAgent {
                 .getText()
                 .trim();
 
-        log.info("客服回答有效性判断输出: {}", resultText);
-        return resultText.contains("有效");
+        log.info("validator LLM 输出（原始）: {}", resultText);
+        return resultText;
     }
 }
