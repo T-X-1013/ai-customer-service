@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * Agent客服 文档加载器
- * 用于读取 18 个分类
+ * 用于读取 24 个分类
  */
 @Component
 @Slf4j

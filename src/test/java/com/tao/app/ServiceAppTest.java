@@ -188,6 +188,7 @@ class ServiceAppTest {
         System.out.println(result);
 
         Assertions.assertNotNull(result);
+
         Assertions.assertFalse(result.isBlank());
     }
 }
