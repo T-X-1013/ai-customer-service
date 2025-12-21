@@ -20,6 +20,8 @@ public class RagObjectOrderedBuilder {
             "客服回答",
             "判断回答是否有效",
             "判断原因",
+            "判断是否解决问题",
+            "解决问题的判断原因",
             "原文摘要",
             "解释"
     };

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tao.app.ServiceApp;
 import com.tao.tools.InvalidAnswerValidatorTool;
+import com.tao.tools.ProblemResolvedValidatorTool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,6 +21,7 @@ public class RagFullProcessService {
 
     private final ServiceApp serviceApp;
     private final InvalidAnswerValidatorTool invalidAnswerValidatorTool;
+    private final ProblemResolvedValidatorTool problemResolvedValidatorTool;
     private final JdbcTemplate jdbcTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -29,7 +31,9 @@ public class RagFullProcessService {
      * 1) 执行 RAG 分类
      * 2) Validator 判断有效性
      * 3) 写入所有无效回答到 failed_cases（严格字段顺序）
-     * 4) 返回 Validator 输出
+     * 4) 对有效回答进行第二阶段判断：是否解决问题
+     * 5) 将未解决问题的案例写入 failed_cases
+     * 6) 返回最终结果
      */
     public String processInfo(String info) {
         try {
@@ -69,11 +73,48 @@ public class RagFullProcessService {
                 );
             }
 
-            //  下一阶段（你后续要做的事：有效回答进入第二个 LLM 判断）
-            // TODO: second stage LLM judgment here
+            // 第二阶段：有效回答进入第二个 LLM 判断
+            // 筛选出有效的回答
+            List<Map<String, Object>> validAnswers = validatorList.stream()
+                    .filter(obj -> "是".equals(obj.getOrDefault("判断回答是否有效", "")))
+                    .toList();
 
-            // 返回 validator 输出（已排序）
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(validatorList);
+            if (validAnswers.isEmpty()) {
+                log.info("没有有效回答，跳过第二阶段判断");
+                return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(validatorList);
+            }
+
+            // 将有效回答转为 JSON，传给第二阶段判断
+            String validAnswersJson = objectMapper.writeValueAsString(validAnswers);
+            log.info("第二阶段输入（有效回答）: {}", validAnswersJson);
+
+            // 调用第二阶段判断：是否解决问题
+            String resolvedJson = problemResolvedValidatorTool.validateResolved(info, validAnswersJson);
+            log.info("第二阶段输出（问题解决性判断）: {}", resolvedJson);
+
+            List<Map<String, Object>> resolvedList =
+                    objectMapper.readValue(resolvedJson, new TypeReference<>() {});
+
+            // 遍历所有未解决问题的案例，入库
+            for (Map<String, Object> obj : resolvedList) {
+                String resolved = (String) obj.getOrDefault("判断是否解决问题", "");
+                if (!"否".equals(resolved))
+                    continue;
+
+                // 构建严格字段顺序 JSON
+                String orderedRagObjectJson = RagObjectOrderedBuilder.buildOrderedJson(obj);
+
+                insertFailedCase(
+                        info,
+                        orderedRagObjectJson,
+                        (String) obj.get("针对的问题"),
+                        (String) obj.get("客服回答"),
+                        "第二阶段：" + (String) obj.get("解决问题的判断原因")
+                );
+            }
+
+            // 返回最终结果（合并两阶段判断）
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(resolvedList);
 
         } catch (Exception e) {
             log.error("处理 info 失败", e);

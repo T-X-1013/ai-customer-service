@@ -16,7 +16,7 @@ public class ChatClientConfig {
 
     private static final String SYSTEM_PROMPT_SERVICE = "你是一个客服分析智能体";
     private static final String SYSTEM_PROMPT_VALIDATOR = "你是一个客服回答判断智能体";
-
+    private static final String SYSTEM_PROMPT_problemResolve = "你是一个判断客服回答是否解决用户问题的智能体";
     /**
      * 主客服对话客户端
      */
@@ -58,6 +58,17 @@ public class ChatClientConfig {
     public ChatClient validatorChatClient(ChatClient.Builder builder) {
         return builder
                 .defaultSystem(SYSTEM_PROMPT_VALIDATOR)
+                .build();
+    }
+
+    /**
+     * 判断客服回答是否解决问题客户端
+     */
+    @Bean
+    @Qualifier("problemResolveChatClient")
+    public ChatClient problemResolveChatClient(ChatClient.Builder builder) {
+        return builder
+                .defaultSystem(SYSTEM_PROMPT_problemResolve)
                 .build();
     }
 }
