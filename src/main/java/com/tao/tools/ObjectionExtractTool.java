@@ -70,7 +70,7 @@ public class ObjectionExtractTool {
 
         // 在这里打印原始模型输出
         String raw = response.getResult().getOutput().getText();
-//        log.info("模型原始输出: {}", raw);
+        log.info("模型原始输出: {}", raw);
 
         String payload = raw.trim();
 
@@ -103,8 +103,13 @@ public class ObjectionExtractTool {
         // 4) 解析 JSON，如果失败返回空数组
         try {
             JsonNode root = objectMapper.readTree(payload);
-            if (root.isObject() && root.has("异议列表")) {
-                root = root.get("异议列表");
+            // 兼容多种可能的键名：异议列表、异议问题
+            if (root.isObject()) {
+                if (root.has("异议列表")) {
+                    root = root.get("异议列表");
+                } else if (root.has("异议问题")) {
+                    root = root.get("异议问题");
+                }
             }
             if (root.isArray()) {
                 String result = objectMapper.writeValueAsString(root);
